@@ -1,0 +1,270 @@
+http://wiki.london.hackspace.org.uk/view/Projects/BigClock
+
+
+1 Status
+2 Hardware
+3 Notes
+4 Protocols
+5 Numbered commands
+5.1 0x0 Display text
+5.2 0x1 ?
+5.3 0x2 Scroll text upwards
+5.4 0x3 Display wrapped text
+5.5 0x4 Clear screen?
+5.6 0x5 Clear screen?
+5.7 0x6 Stop animation
+5.8 0x7 Stop animation?
+5.9 0x8 Display text ?
+5.10 0x9 ?
+5.11 0xa Display by half-screens
+5.12 0xF0 Get serial task count
+5.13 0xF3 Get time
+5.14 0xF4 Get date
+5.15 0xF5 Get version
+6 Firmware
+Status
+
+The screen on one side has been damaged and a roughly 10x10 pixel area is dead.
+Works fine apart from that.
+We need to work out how to talk to it.
+Update : we can send the time to it via the serial port, but don't yet know how to format the other commands.
+Hardware
+
+Photos by Akki
+The serial port is exposed as a header on some master boards, in the comms ribbon cables, and as DE-9 connectors on the case board (where the power is split between the two units).
+  
+The header, with the register pin to the left, left-to-right, top-to-bottom is RX, TX, GND, GND.
+Notes
+
+Mark has done some work on the dumped rom, including extracting the fonts at Tom's suggestion:
+A little more on possible protocols here: http://www.infotec.co.uk/index.php?page=communication
+https://github.com/marksteward/Infotec/
+The serial port is probably accessible using RS422 via the junction board that distributes power and signal to both clocks in the outer case. It is also available on the clock control board at RS232 levels (the signals are combined using combinational logic, rather than chosen with a switch). This is the small white 3-pin connector between the coin cell and the 2-pin connector for the front panel LED. Pins are ground, txd, rxd, counting from the edge of the motherboard towards the daughterboard. Protocol is 9600 8,n,1
+Protocols
+
+The command
+>PR#0#00#00,07,08#25,05,2012,2#3D<
+sets the time to 00:07:08 (and, presumably, the calendar to 25/5/12 though we don't know how to display that at the moment). The tailing 3D is a checksum - the 2-digit hex representation of the XOR of all the preceding characters, starting with the '>'.
+The clock seems to initially set itself up for 19200 baud serial port but later in the initialisation changes it to 9600.
+Turning on DIP switch 8 and cycling power puts the clock in a display test mode.
+Typing <>< into the clock causes it to sleep for a couple of seconds.
+Numbered commands
+
+Command messages are in the format: >inflags#sendresponse#cmdnum#serialtask#inbuf#args,args,...#checksum<
+<, > and # in inbuf are escaped using ^
+All except inbuf are in hex. As a start, try 0 for inflags, 1 for sendresponse, 0 for serialtask, and cc to ignore the checksum
+0x0 Display text
+Input
+serialtask	
+display 0, 1, etc.
+flag 0x80 for all
+buf	 message
+arg0	
+0 = left
+1 = centre
+arg1	 time to display for?
+Output
+ ?
+>0#1#0#00#asd##cc<
+>00#40#01##3B<
+
+0x1 ?
+Input
+serialtask	
+display 0, 1, etc.
+flag 0x80 for all
+buf	 message
+arg0	 Bitfield of 4 flags.
+Output
+ ?
+Seems to reboot for anything at the moment. There's probably something we need to prepare.
+>0#1#1#00#blah#2#cc<
+>00#40#01##3B<
+0x2 Scroll text upwards
+Input
+serialtask	
+display 0, 1, etc.
+flag 0x80 for all
+buf	 message
+arg0	 delay in secs
+arg1	
+0 = don't repeat
+1 = repeat
+Output
+ ?
+Text is centred, and wrapped!
+>0#1#2#00#hello#2,0#cc<
+>00#40#01##3B<
+0x3 Display wrapped text
+Input
+serialtask	
+display 0, 1, etc.
+flag 0x80 for all
+buf	 message
+arg0	
+0 = don't centre
+1 = centre
+arg1	
+ ?
+ ?
+arg2	 delay between pages
+Output
+ ?
+>0#1#3#00#hello world#1,0,2#cc<
+>00#00#01##3F<
+
+0x4 Clear screen?
+Input
+serialtask	
+display 0, 1, etc.
+flag 0x80 for all
+arg0	
+ ?
+Output
+ ?
+>0#1#4#00##ff#cc<
+>00#00#01##3F<
+0x5 Clear screen?
+Input
+serialtask	
+display 0, 1, etc.
+flag 0x80 for all
+arg0	
+ ?
+Output
+ ?
+Also set some serial flag
+>0#1#5#00##1#cc<
+>00#00#01##3F<
+0x6 Stop animation
+Input
+serialtask	
+display 0, 1, etc.
+flag 0x80 for all
+arg0	
+ ?
+Output
+ ?
+>0#1#6#00##0#cc<
+>00#00#01##3F<
+0x7 Stop animation?
+Input
+serialtask	
+display 0, 1, etc.
+flag 0x80 for all
+arg0	
+0 = ?
+1 = ?
+Output
+ ?
+>0#1#7#00##0#cc<
+>00#00#01##3F<
+0x8 Display text ?
+Input
+serialtask	
+display 0, 1, etc.
+flag 0x80 for all
+buf	 message
+arg0	
+0 = ?
+1 = ?
+Output
+ ?
+>0#1#8#00#hello world#0#cc<
+>00#00#01##3F<
+0x9 ?
+Input
+serialtask	
+display 0, 1, etc.
+flag 0x80 for all
+buf	 message
+arg0	
+0 = ?
+1 = ?
+Output
+ ?
+>0#1#9#00##0#cc<
+>00#00#01##3F<
+
+0xa Display by half-screens
+Input
+serialtask	
+display 0, 1, etc.
+flag 0x80 for all
+buf	 message
+arg0	
+0 = ?
+1 = ? (might crash it)
+arg1	 0x10-0xbf = clear top half afterwards? wrapping height?
+arg2	 1 = do top half, then bottom half
+Output
+ ?
+>0#1#a#00#hi there#0,0,0#cc<
+>00#00#01##3F<
+0xF0 Get serial task count
+Input
+none
+Output
+arg0	 count
+>0#1#F0####cc<
+>00#80#01#03#34<
+
+>0#1#F1####cc<
+>00#03#00##3D<
+>0#1#F2####cc<
+>00#80#01#00#37<
+0xF3 Get time
+Input
+none
+Output
+arg0	 hours
+arg1	 minutes
+arg2	 seconds
+>0#1#F3####cc<
+>00#80#01#02,32,29#3F<
+0xF4 Get date
+Input
+none
+Output
+arg0	 date
+arg1	 month
+arg2	 year
+>0#1#F4####cc<
+>00#80#01#1E,05,0A#37<
+0xF5 Get version
+Input
+none
+Output
+flags	 ?
+arg0	 Major version
+arg1	 Minor version
+>0#1#F5####cc<
+>00#80#01#04,07#18<
+Firmware
+
+NEC 27 (25), which is almost identical to a 186, with register bank switching, DMA and a simple buffering (macro) system for interrupts. User manual and with opcodes and with chart.
+External bus	 8-bit
+Clock speed	 8MHz?
+DMA channels	 2
+Serial	 built-in
+Timers	 2
+Internal data area	 256 bytes based at xxe00
+Special functions	 256 bytes based at xxf00
+Disassembly at http://github.com/marksteward/Infotec/.
+Project page Discussion View source History
+Log in / create account
+navigation
+Main page
+Members' projects
+Recent changes
+Random page
+search
+    
+toolbox
+What links here
+Related changes
+Special pages
+Printable version
+Permanent link
+
+This page was last modified on 18 February 2012, at 16:13. This page has been accessed 770 times.
