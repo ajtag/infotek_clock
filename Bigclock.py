@@ -9,7 +9,7 @@ import time
 #import sys
 
 class BigClock():
-    def __init__(self, host = ('172.31.26.106', 10001)):
+    def __init__(self, host = ('192.168.0.99', 10001)):
         self.host = host
         self.connected = False 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -101,7 +101,7 @@ class clockui():
             (command, arguments) = self.get_input('Enter a command:')
             while command != 'quit': 
                 if command == 'wifi':
-                    arguments = 'LEDs4nDsh1t!'
+                    arguments = 'wootastringthisis'
                     self.clock.send(Command(0, arguments))
                 else:
                     self.clock.send(Command(command, arguments))
